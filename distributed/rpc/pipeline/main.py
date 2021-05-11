@@ -55,9 +55,19 @@ class ResNetBase(nn.Module):
                 norm_layer(planes * self._block.expansion),
             )
 
-        layers = []
-        layers.append(self._block(self.inplanes, planes, stride, downsample, self.groups,
-                                  self.base_width, previous_dilation, norm_layer))
+        layers = [
+            self._block(
+                self.inplanes,
+                planes,
+                stride,
+                downsample,
+                self.groups,
+                self.base_width,
+                previous_dilation,
+                norm_layer,
+            )
+        ]
+
         self.inplanes = planes * self._block.expansion
         for _ in range(1, blocks):
             layers.append(self._block(self.inplanes, planes, groups=self.groups,
@@ -169,8 +179,7 @@ class DistResNet50(nn.Module):
         return torch.cat(torch.futures.wait_all(out_futures))
 
     def parameter_rrefs(self):
-        remote_params = []
-        remote_params.extend(self.p1_rref.remote().parameter_rrefs().to_here())
+        remote_params = list(self.p1_rref.remote().parameter_rrefs().to_here())
         remote_params.extend(self.p2_rref.remote().parameter_rrefs().to_here())
         return remote_params
 
@@ -238,8 +247,6 @@ def run_worker(rank, world_size, num_split):
             world_size=world_size,
             rpc_backend_options=options
         )
-        pass
-
     # block until all rpcs finish
     rpc.shutdown()
 

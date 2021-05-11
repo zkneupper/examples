@@ -52,8 +52,7 @@ class Net(nn.Module):
         x = F.relu(x)
         x = self.dropout2(x)
         x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
-        return output
+        return F.log_softmax(x, dim=1)
 
 
 # --------- Helper Methods --------------------
@@ -110,8 +109,7 @@ class ParameterServer(nn.Module):
     # Wrap local parameters in a RRef. Needed for building the
     # DistributedOptimizer which optimizes parameters remotely.
     def get_param_rrefs(self):
-        param_rrefs = [rpc.RRef(param) for param in self.model.parameters()]
-        return param_rrefs
+        return [rpc.RRef(param) for param in self.model.parameters()]
 
 
 param_server = None
@@ -154,15 +152,13 @@ class TrainerNet(nn.Module):
             "parameter_server", get_parameter_server, args=(num_gpus,))
 
     def get_global_param_rrefs(self):
-        remote_params = remote_method(
+        return remote_method(
             ParameterServer.get_param_rrefs,
             self.param_server_rref)
-        return remote_params
 
     def forward(self, x):
-        model_output = remote_method(
+        return remote_method(
             ParameterServer.forward, self.param_server_rref, x)
-        return model_output
 
 
 def run_training_loop(rank, num_gpus, train_loader, test_loader):
@@ -268,8 +264,6 @@ if __name__ == '__main__':
     world_size = args.world_size
     if args.rank == 0:
         p = mp.Process(target=run_parameter_server, args=(0, world_size))
-        p.start()
-        processes.append(p)
     else:
         # Get data to train on
         train_loader = torch.utils.data.DataLoader(
@@ -294,8 +288,7 @@ if __name__ == '__main__':
                 world_size, args.num_gpus,
                 train_loader,
                 test_loader))
-        p.start()
-        processes.append(p)
-
+    p.start()
+    processes.append(p)
     for p in processes:
         p.join()
