@@ -87,7 +87,7 @@ for node in traced_rn18.nodes:
     module_qualname = tracer.node_to_originating_module.get(node)
     print("Node", node, "is from module", module_qualname)
 """
-Node x is from module 
+Node x is from module
 Node conv1 is from module conv1
 Node bn1 is from module bn1
 Node relu is from module relu
@@ -155,7 +155,7 @@ Node layer4_1_bn2 is from module layer4.1.bn2
 Node add_7 is from module layer4.1
 Node layer4_1_relu_1 is from module layer4.1.relu
 Node avgpool is from module avgpool
-Node flatten is from module 
+Node flatten is from module
 Node fc is from module fc
 Node output is from module None
 """

@@ -52,14 +52,14 @@ public:
         labels = process_labels(list_labels);
         ds_size = states.size();
     };
-    
+
     torch::data::Example<> get(size_t index) override {
         /* This should return {torch::Tensor, torch::Tensor} */
         torch::Tensor sample_img = states.at(index);
         torch::Tensor sample_label = labels.at(index);
         return {sample_img.clone(), sample_label.clone()};
     };
-    
+
     torch::optional<size_t> size() const override {
         return ds_size;
     };

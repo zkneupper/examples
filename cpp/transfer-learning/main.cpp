@@ -14,7 +14,7 @@ torch::Tensor read_data(std::string location) {
      Parameters
      ===========
      1. location (std::string type) - required to load image from the location
-     
+
      Returns
      ===========
      torch::Tensor type - image read as tensor
@@ -32,7 +32,7 @@ torch::Tensor read_label(int label) {
      Parameters
      ===========
      1. label (int type) - required to convert int to tensor
-     
+
      Returns
      ===========
      torch::Tensor type - label read as tensor
@@ -47,7 +47,7 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images) 
      Parameters
      ===========
      1. list_images (std::vector<std::string> type) - list of image paths in a folder to be read
-     
+
      Returns
      ===========
      std::vector<torch::Tensor> type - Images read as tensors
@@ -66,7 +66,7 @@ std::vector<torch::Tensor> process_labels(std::vector<int> list_labels) {
      Parameters
      ===========
      1. list_labels (std::vector<int> list_labels) -
-     
+
      Returns
      ===========
      std::vector<torch::Tensor> type - returns vector of tensors (labels)
@@ -86,7 +86,7 @@ std::pair<std::vector<std::string>,std::vector<int>> load_data_from_folder(std::
      Parameters
      ===========
      1. folders_name (std::vector<std::string> type) - name of folders as a vector to load data from
-     
+
      Returns
      ===========
      std::pair<std::vector<std::string>, std::vector<int>> type - returns pair of vector of strings (image paths) and respective labels' vector (int label)
@@ -123,7 +123,7 @@ template<typename Dataloader>
 void train(torch::jit::script::Module net, torch::nn::Linear lin, Dataloader& data_loader, torch::optim::Optimizer& optimizer, size_t dataset_size) {
     /*
      This function trains the network on our data loader using optimizer.
-     
+
      Also saves the model as model.pt after every epoch.
      Parameters
      ===========
@@ -132,45 +132,45 @@ void train(torch::jit::script::Module net, torch::nn::Linear lin, Dataloader& da
      3. data_loader (DataLoader& type) - Training data loader
      4. optimizer (torch::optim::Optimizer& type) - Optimizer like Adam, SGD etc.
      5. size_t (dataset_size type) - Size of training dataset
-     
+
      Returns
      ===========
      Nothing (void)
      */
-    float best_accuracy = 0.0; 
+    float best_accuracy = 0.0;
     int batch_index = 0;
-    
+
     for(int i=0; i<25; i++) {
         float mse = 0;
         float Acc = 0.0;
-        
+
         for(auto& batch: *data_loader) {
             auto data = batch.data;
             auto target = batch.target.squeeze();
-            
+
             // Should be of length: batch_size
             data = data.to(torch::kF32);
             target = target.to(torch::kInt64);
-            
+
             std::vector<torch::jit::IValue> input;
             input.push_back(data);
             optimizer.zero_grad();
-            
+
             auto output = net.forward(input).toTensor();
             // For transfer learning
             output = output.view({output.size(0), -1});
             output = lin(output);
-            
+
             auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
-            
+
             loss.backward();
             optimizer.step();
-            
+
             auto acc = output.argmax(1).eq(target).sum();
-            
+
             Acc += acc.template item<float>();
             mse += loss.template item<float>();
-            
+
             batch_index += 1;
         }
 
@@ -192,26 +192,26 @@ template<typename Dataloader>
 void test(torch::jit::script::Module network, torch::nn::Linear lin, Dataloader& loader, size_t data_size) {
     /*
      Function to test the network on test data
-     
+
      Parameters
      ===========
      1. network (torch::jit::script::Module type) - Pre-trained model without last FC layer
      2. lin (torch::nn::Linear type) - last FC layer with revised out_features depending on the number of classes
      3. loader (Dataloader& type) - test data loader
      4. data_size (size_t type) - test data size
-     
+
      Returns
      ===========
      Nothing (void)
      */
     network.eval();
-    
+
     float Loss = 0, Acc = 0;
-    
+
     for (const auto& batch : *loader) {
         auto data = batch.data;
         auto targets = batch.target.squeeze();
-        
+
         data = data.to(torch::kF32);
         targets = targets.to(torch::kInt64);
 
@@ -221,13 +221,13 @@ void test(torch::jit::script::Module network, torch::nn::Linear lin, Dataloader&
         auto output = network.forward(input).toTensor();
         output = output.view({output.size(0), -1});
         output = lin(output);
-        
+
         auto loss = torch::nll_loss(torch::log_softmax(output, 1), targets);
         auto acc = output.argmax(1).eq(targets).sum();
         Loss += loss.template item<float>();
         Acc += acc.template item<float>();
     }
-    
+
     std::cout << "Test Loss: " << Loss/data_size << ", Acc:" << Acc/data_size << std::endl;
 }
 
@@ -235,24 +235,24 @@ int main(int argc, const char * argv[]) {
     // Set folder names for cat and dog images
     std::string cats_name = "/Users/krshrimali/Documents/krshrimali-blogs/dataset/train/cat_test";
     std::string dogs_name = "/Users/krshrimali/Documents/krshrimali-blogs/dataset/train/dog_test";
-    
+
     std::vector<std::string> folders_name;
     folders_name.push_back(cats_name);
     folders_name.push_back(dogs_name);
-    
+
     // Get paths of images and labels as int from the folder paths
     std::pair<std::vector<std::string>, std::vector<int>> pair_images_labels = load_data_from_folder(folders_name);
-    
+
     std::vector<std::string> list_images = pair_images_labels.first;
     std::vector<int> list_labels = pair_images_labels.second;
-    
+
     // Initialize CustomDataset class and read data
     auto custom_dataset = CustomDataset(list_images, list_labels).map(torch::data::transforms::Stack<>());
 
     // Load pre-trained model
     // You can also use: auto module = torch::jit::load(argv[1]);
     torch::jit::script::Module module = torch::jit::load(argv[1]);
-    
+
     // Resource: https://discuss.pytorch.org/t/how-to-load-the-prebuilt-resnet-models-or-any-other-prebuilt-models/40269/8
     // For VGG: 512 * 14 * 14, 2
 
