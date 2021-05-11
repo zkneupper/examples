@@ -63,7 +63,6 @@ def binary_mapping(op):
         return op(a, b)
     return f
 
-decomposition_rules = {}
 binary_decompositions = [
     (operator.matmul, torch.mm),
     (operator.add, torch.add),
@@ -78,8 +77,9 @@ binary_decompositions = [
     (operator.ne, torch.ne),
     (operator.and_, torch.bitwise_and)
 ]
-for old, new in binary_decompositions:
-    decomposition_rules[old] = binary_mapping(new)
+decomposition_rules = {
+    old: binary_mapping(new) for old, new in binary_decompositions
+}
 
 def addmm_decompose(input, mat1, mat2, beta=1, alpha=1, out=None):
     assert(out is None)
@@ -107,10 +107,9 @@ def decompose(model: torch.nn.Module, example_inputs) -> torch.nn.Module:
                 proxy_args = map_arg(node.args, lambda n: fx.Proxy(env[n.name]))
                 proxy_kwargs = map_arg(node.kwargs, lambda n: fx.Proxy(env[n.name]))
                 new_node = decomposition_rules[node.target](*proxy_args, **proxy_kwargs).node
-                env[node.name] = new_node
             else:
                 new_node = new_graph.node_copy(node, lambda x: env[x.name])
-                env[node.name] = new_node
+            env[node.name] = new_node
         model = fx.GraphModule(model, new_graph)
     return model
 
@@ -124,10 +123,10 @@ class kernel_arena_scope(object):
         self.scope = None
 
 def get_dim_args(dims):
-    dim_args = []
-    for dim in dims:
-        dim_args.append(te.DimArg(te.ExprHandle.int(dim), 'i' + str(len(dim_args))))
-    return dim_args
+    return [
+        te.DimArg(te.ExprHandle.int(dim), 'i' + str(len(dim_args)))
+        for dim in dims
+    ]
 
 def to_expr(x):
     if isinstance(x, int):
@@ -140,8 +139,7 @@ lowering_functions = {}
 
 def wrap_compute(f):
     def fn_lower(name, out_shape, inp_shapes, args):
-        X = te.Compute(name, get_dim_args(out_shape), f(inp_shapes, args))
-        return X
+        return te.Compute(name, get_dim_args(out_shape), f(inp_shapes, args))
     return fn_lower
 
 def gen_unary_nnc(op):
@@ -186,7 +184,7 @@ for torch_op, nnc_fn in unary_lowerings:
 
 def gen_binary_nnc(op):
     def is_nnc_obj(x):
-        return isinstance(x, te.Placeholder) or isinstance(x, te.Tensor)
+        return isinstance(x, (te.Placeholder, te.Tensor))
     def gen_op_nnc(inp_shapes, args):
         if is_nnc_obj(args[0]) and is_nnc_obj(args[1]):
             A_shape, A_dtype = inp_shapes[0]
@@ -426,8 +424,7 @@ if __name__ == '__main__':
             dp = torch.flatten(dp_unflatten, 1, -1)
             inp = torch.cat([dp, wide_preproc], 1)
             t1 = torch.transpose(self.fc_w, 1, 0)
-            fc1 = torch.addmm(self.fc_b, inp, t1)
-            return fc1
+            return torch.addmm(self.fc_b, inp, t1)
 
     with kernel_arena_scope():
         with torch.no_grad():

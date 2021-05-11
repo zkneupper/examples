@@ -184,7 +184,7 @@ class Agent:
             rewards.extend(self.rewards[ob_id])
 
         # use the minimum observer reward to calculate the running reward
-        min_reward = min([sum(self.rewards[ob_id]) for ob_id in self.rewards])
+        min_reward = min(sum(self.rewards[ob_id]) for ob_id in self.rewards)
         self.running_reward = 0.05 * min_reward + (1 - 0.05) * self.running_reward
 
         # clear saved probs and rewards
@@ -219,8 +219,8 @@ def run_worker(rank, world_size):
         rpc.init_rpc(AGENT_NAME, rank=rank, world_size=world_size)
 
         agent = Agent(world_size)
+        n_steps = int(TOTAL_EPISODE_STEP / (args.world_size - 1))
         for i_episode in count(1):
-            n_steps = int(TOTAL_EPISODE_STEP / (args.world_size - 1))
             agent.run_episode(n_steps=n_steps)
             last_reward = agent.finish_episode()
 

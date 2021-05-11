@@ -61,15 +61,16 @@ def select_action(state):
 
 def finish_episode():
     R = 0
-    policy_loss = []
     returns = []
     for r in policy.rewards[::-1]:
         R = r + args.gamma * R
         returns.insert(0, R)
     returns = torch.tensor(returns)
     returns = (returns - returns.mean()) / (returns.std() + eps)
-    for log_prob, R in zip(policy.saved_log_probs, returns):
-        policy_loss.append(-log_prob * R)
+    policy_loss = [
+        -log_prob * R for log_prob, R in zip(policy.saved_log_probs, returns)
+    ]
+
     optimizer.zero_grad()
     policy_loss = torch.cat(policy_loss).sum()
     policy_loss.backward()

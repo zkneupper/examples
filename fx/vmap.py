@@ -55,10 +55,7 @@ def move_bdim_to_front(x, result_ndim=None):
     """
     x_dim = len(x.shape)
     x_bdim = x.bdim
-    if x_bdim is None:
-        x = torch.unsqueeze(x, 0)
-    else:
-        x = torch.movedim(x, x_bdim, 0)
+    x = torch.unsqueeze(x, 0) if x_bdim is None else torch.movedim(x, x_bdim, 0)
     if result_ndim is None:
         return x
     diff = result_ndim - x_dim - (x_bdim is None)

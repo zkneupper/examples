@@ -67,5 +67,4 @@ def get_args():
                         help='model snapshot to resume.')
     parser.add_argument('--dry-run', action='store_true',
                         help='run only a few iterations')
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
